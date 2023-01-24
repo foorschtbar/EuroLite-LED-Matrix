@@ -93,11 +93,28 @@ void triggerMultivibrator()
   digitalWrite(PIN_A, LOW);
 }
 
+uint64_t data = 0;
+int color = 0;
+long timer = 0;
+
 void loop()
 {
   digitalWrite(PIN_EN, LOW);
   setLine(line);
-  writeLine(PIN_R1, PIN_G1, PIN_TXD, 0b0011010111111111, 0b1100101011111111);
+
+  if (color == 0)
+  {
+    writeLine(PIN_R1, PIN_G1, PIN_TXD, data, 0);
+  }
+  else if (color == 1)
+  {
+    writeLine(PIN_R1, PIN_G1, PIN_TXD, 0, data);
+  }
+  else
+  {
+    writeLine(PIN_R1, PIN_G1, PIN_TXD, data, data);
+  }
+
   digitalWrite(PIN_EN, HIGH);
   // delayMicroseconds(100);
   triggerMultivibrator();
@@ -109,5 +126,21 @@ void loop()
   }
   // Serial.print("x");
 
-  // delay(100);
+  if (millis() - timer > 10)
+  {
+    timer = millis();
+
+    if (~data == 0)
+    {
+      data = 0;
+      color++;
+    }
+    if (color > 2)
+    {
+      color = 0;
+    }
+
+    data = data << 1;
+    data = data + 1;
+  }
 }
