@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <U8g2lib.h>
 
 #define PIN_A 16   // Data A0 --> U1 --> U3/U4 --> U22/U23/U24/U25
 #define PIN_B 17   // Data A1 --> U1 --> U3/U4 --> U22/U23/U24/U25
@@ -10,6 +11,8 @@
 #define PIN_G1 25  // Green LEDs (DS - serial data input)
 #define PIN_TXD 26 // Clock --> [2,3,4] U2 [16, 17, 18] --> [11] U6/U7/U8...U21  (SHCP - shift register clock input)
                    // U5 (Multivibrator) --> [13] U6/U7/U8...U21 (^OE - output enable input(active LOW))
+
+U8G2_BITMAP u8g2(64, 16, U8G2_R0);
 
 int line = 0;
 
@@ -25,7 +28,61 @@ void setup()
   pinMode(PIN_R1, OUTPUT);
   pinMode(PIN_G1, OUTPUT);
   pinMode(PIN_TXD, OUTPUT);
+
   Serial.begin(115200);
+  Serial.println("Setup Start");
+
+  u8g2.begin();
+
+  u8g2.drawFrame(0, 0, 64, 16);
+
+  u8g2.drawFrame(2, 2, 4, 4);
+  u8g2.drawFilledEllipse(4, 11, 2, 2, U8G2_DRAW_ALL);
+
+  u8g2.setFont(u8g2_font_5x7_mf);
+  // u8g2_SetFont(&u8g2, u8g2_font_helvB18_tr);
+  u8g2.drawStr(9, 8, "A");
+  u8g2.drawStr(17, 8, "B");
+  u8g2.drawStr(25, 8, "C");
+  u8g2.drawStr(33, 8, "D");
+  u8g2.drawStr(9, 14, "1");
+  u8g2.drawStr(17, 14, "2");
+  u8g2.drawStr(25, 14, "3");
+  u8g2.drawStr(33, 14, "4");
+
+  Serial.println("Setup Done");
+}
+
+void serialPreview()
+{
+
+  // u8g2.writeBufferPBM(Serial);
+
+  Serial.printf("W:%i (%i) x H:%i (%i)\n", u8g2.getBufferTileWidth(), u8g2.getBufferTileWidth() * 8, u8g2.getBufferTileHeight(), u8g2.getBufferTileHeight() * 8);
+
+  uint16_t x, y;
+  uint16_t w, h;
+
+  w = u8g2.getBufferTileWidth();
+  w *= 8;
+  h = u8g2.getBufferTileHeight();
+  h *= 8;
+
+  for (y = 0; y < h; y++)
+  {
+    for (x = 0; x < w; x++)
+    {
+      if (u8x8_capture_get_pixel_1(x, y, u8g2.getBufferPtr(), u8g2.getBufferTileWidth()))
+      {
+        Serial.print("*");
+      }
+      else
+      {
+        Serial.print(" ");
+      }
+    }
+    Serial.print("\n");
+  }
 }
 
 void setLine(int n)
@@ -99,24 +156,11 @@ long timer = 0;
 
 void loop()
 {
+
   digitalWrite(PIN_EN, LOW);
   setLine(line);
 
-  if (color == 0)
-  {
-    writeLine(PIN_R1, PIN_G1, PIN_TXD, data, 0);
-  }
-  else if (color == 1)
-  {
-    writeLine(PIN_R1, PIN_G1, PIN_TXD, 0, data);
-  }
-  else
-  {
-    writeLine(PIN_R1, PIN_G1, PIN_TXD, data, data);
-  }
-
   digitalWrite(PIN_EN, HIGH);
-  // delayMicroseconds(100);
   triggerMultivibrator();
 
   line++;
@@ -124,23 +168,14 @@ void loop()
   {
     line = 0;
   }
-  // Serial.print("x");
 
-  if (millis() - timer > 10)
+  if (millis() - timer > 1000)
   {
     timer = millis();
 
-    if (~data == 0)
-    {
-      data = 0;
-      color++;
-    }
-    if (color > 2)
-    {
-      color = 0;
-    }
-
-    data = data << 1;
-    data = data + 1;
+    serialPreview();
   }
+
+  // Brightness
+  delayMicroseconds(100);
 }
